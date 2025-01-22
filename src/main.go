@@ -36,7 +36,7 @@ import (
 	_ "net/http/pprof"
 )
 
-var VERSION = "Dev"
+var VERSION = "1.0.0"
 
 type ProgramConfig struct {
 	ListenAddress          string `env:"LISTEN_ADDRESS" envDefault:":25565"`
