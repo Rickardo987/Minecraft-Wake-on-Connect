@@ -1,0 +1,105 @@
+services:
+  minecraft-docker-autostart:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    container_name: minecraft-docker-autostart
+    restart: always
+    user: 1002:1002
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - 16136:25565
+    environment:
+      DOCKER_HOST: tcp://minecraft-docker-socket-proxy:2375
+      MINECRAFT_ENDPOINT: minecraft:25565
+#      ENABLE_DEBUG: true
+    depends_on:
+      minecraft-docker-socket-proxy:
+        condition: service_started
+      minecraft:
+        condition: service_started
+    networks:
+      socket:
+      internal:
+
+  minecraft-docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: minecraft-docker-socket-proxy
+    #privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      POST: 1 # Need write access
+      ALLOW_START: 1
+      CONTAINERS: 1
+    networks:
+      socket:
+
+  minecraft:
+    image: itzg/minecraft-server:latest
+    container_name: minecraft
+    restart: no
+    user: 1002:1002
+    tty: true
+    stdin_open: true
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      ENABLE_AUTOSTOP: "TRUE"
+      # More aggressive settings for demo purposes
+      AUTOSTOP_TIMEOUT_INIT: "30"
+      AUTOSTOP_TIMEOUT_EST: "20"
+      TYPE: PAPER
+      PAPER_CHANNEL: experimental
+      MEMORY: 5G
+      VIEW_DISTANCE: 15
+      TZ: America/New_York
+      STOP_SERVER_ANNOUNCE_DELAY: 3
+      ENABLE_ROLLING_LOGS: true
+      #DEBUG_HELPER: true
+      EULA: true
+      #SPIGET_RESOURCES: 102931 #NoChatReports
+      MODRINTH_PROJECTS: tabtps,freedomchat,chunky,chunkyborder
+      MODRINTH_ALLOWED_VERSION_TYPE: release
+      REMOVE_OLD_MODS: true
+      REMOVE_OLD_MODS_EXCLUDE: TCPShield-2.8.1.jar
+    labels:
+      com.centurylinklabs.watchtower.lifecycle.pre-update: /data/pre_update.sh
+#    ports:
+#      - 25565:25565
+#      - 16136:25565
+    networks:
+      internal:
+#        ipv4_address: 172.25.0.5
+    volumes:
+      - ./mc-data:/data
+
+#  minecraft-bluemap:
+#    image: nginx:alpine
+#    container_name: minecraft-bluemap
+#    restart: always
+#    security_opt:
+#      - no-new-privileges:true
+#    labels:
+#      traefik.enable: true
+#      # PORT MAPPING HERE
+#      traefik.http.routers.map.rule: Host(`map.gonce.io`)
+#      traefik.http.routers.map.middlewares: authentik@file
+#    volumes:
+#      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+#      - ./minecraft/bluemap/web:/var/www:ro
+#    depends_on:
+#      - minecraft
+#    networks:
+#      internal:
+#      proxy:
+
+networks:
+  socket:
+    internal: true
+  internal:
+#    driver: bridge
+#    ipam:
+#      config:
+#      - subnet: 172.25.0.0/24
